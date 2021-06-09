@@ -1,0 +1,35 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/local/include/*",
+                "/opt/ros/melodic/include",
+                "/opt/ros/kinetic/include",
+                "/usr/include/pcl-1.7",
+                "/usr/local/include/eigen3",
+                "/usr/include/pcl-1.8",
+                "/usr/include/eigen3",
+                "/usr/local/include/g2o",
+                "/usr/local/include/sophus",
+                "/home/sunny/workspace/ros2_foxy/install/**",
+                "/home/sunny/workspace/nav_ws/install/**",
+                "/home/sunny/workspace/nav_ws/install/nav2_msgs/include/**",
+                "/home/sunny/workspace/ros2_foxy/install/**",
+                "/usr/local/include/gtsam",
+                "/usr/local/include/*",
+                "/usr/local/include/g2o/*",
+                "/usr/local/include/pangolin",
+                "/usr/local/include/opencv/*"
+                
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
