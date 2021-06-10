@@ -802,6 +802,7 @@ void KeypointVioEstimator::optimize() {
     
     // frame_poses 存储的是 [timestamp, PoseState 的信息];
     // 这里应该是给 AbsOrderMap 进行各个位姿存在的序号 进行统计
+    // ? 这个是什么地方进行统计还真知道
     for (const auto& kv : frame_poses) {
       aom.abs_order_map[kv.first] = std::make_pair(aom.total_size, POSE_SIZE);
 
@@ -817,6 +818,7 @@ void KeypointVioEstimator::optimize() {
     // ? POSE_VEL_BIAS_SIZE 这个是多少
     // ? frame_poses 和 frame_states 不会出现aom abs_order_map 内容出现替换的问题吗？因为感觉 frame_poses 和 frame_states 的时间戳可能是
     // 这个问题估计要看完margin 才能知道了
+    // frame state 在kepoint_vio 里面每一帧都会创建一个
     for (const auto& kv : frame_states) {
       aom.abs_order_map[kv.first] =
           std::make_pair(aom.total_size, POSE_VEL_BIAS_SIZE);
@@ -849,7 +851,7 @@ void KeypointVioEstimator::optimize() {
       linearizeHelper(rld_vec, lmdb.getObservations(), rld_error);
 
 
-      // LinearizeAbsReduce 进行声明操作目前还不知道
+      // LinearizeAbsReduce 实际上就在组成 Pose 的舒尔补block (视觉残差)
       BundleAdjustmentBase::LinearizeAbsReduce<DenseAccumulator<double>> lopt(
           aom);
 
@@ -858,11 +860,15 @@ void KeypointVioEstimator::optimize() {
 
       tbb::parallel_reduce(range, lopt);
 
+      // IMU参差添加到H 和b
+      // ? 但是如何使用Schur 补的问还需要研究一下啊
       double marg_prior_error = 0;
       double imu_error = 0, bg_error = 0, ba_error = 0;
       linearizeAbsIMU(aom, lopt.accum.getH(), lopt.accum.getB(), imu_error,
                       bg_error, ba_error, frame_states, imu_meas,
                       gyro_bias_weight, accel_bias_weight, g);
+      // 先验添加到 H 和b 当中
+      // ? 具体的计算还要在后面看一下
       linearizeMargPrior(marg_order, marg_H, marg_b, aom, lopt.accum.getH(),
                          lopt.accum.getB(), marg_prior_error);
 

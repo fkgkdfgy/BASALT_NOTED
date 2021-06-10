@@ -259,6 +259,8 @@ struct PoseStateWithLin {
 };
 
 struct AbsOrderMap {
+  // [host frame FrameCamId, [pose index,pose_opt_size]] 
+  // pose_index 是对应 Hessian 矩阵对应的index
   std::map<int64_t, std::pair<int, int>> abs_order_map;
   // 一共有多少个优化 block
   size_t items = 0; 

@@ -335,12 +335,19 @@ class BundleAdjustmentBase {
     //  BASALT_ASSERT(abs_b.rows() == asize);
 
     for (size_t i = 0; i < rld.order.size(); i++) {
+      // Host Frame 的 TimeCamId
       const TimeCamId& tcid_h = rld.order[i].first;
+      // Target Frame 的 TimeCamId
       const TimeCamId& tcid_ti = rld.order[i].second;
 
+      // abs_h_idx 对应的是host frame    在hessian矩阵的idx
+      // abs_ti_idx对应的是 target frame 在 hessian矩阵的idx
       int abs_h_idx = aom.abs_order_map.at(tcid_h.frame_id).first;
       int abs_ti_idx = aom.abs_order_map.at(tcid_ti.frame_id).first;
 
+      // addB 和 addH 就是往 accum 内部填充数值
+      // 最后就可以填充出一个abs index 下面的Hessian 和 b
+      // 具体内容推导见 47. basalt/code_reading/schur_unwarp_solve.md
       accum.template addB<POSE_SIZE>(
           abs_h_idx, rld.d_rel_d_h[i].transpose() *
                          rel_b.segment<POSE_SIZE>(i * POSE_SIZE));
@@ -412,7 +419,8 @@ class BundleAdjustmentBase {
         Eigen::VectorXd rel_b;
         // 这里计算的H和b 只是计算了 T_
         linearizeRel(rld, rel_H, rel_b);
-
+        // 放入 linearizeAbs 的 rel_H rel_b 是相对位姿作为优化参数的H 和 b 还没有拓展到 host frame 和 target frame 的位姿
+        // accum 存储真正的H 和 b
         linearizeAbs(rel_H, rel_b, rld, aom, accum);
       }
     }

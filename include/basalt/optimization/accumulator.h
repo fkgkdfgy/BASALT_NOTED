@@ -67,6 +67,7 @@ class DenseAccumulator {
   typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> VectorX;
   typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> MatrixX;
 
+  // addH 和 addB 就是往H 和b 内部添数据
   template <int ROWS, int COLS, typename Derived>
   inline void addH(int i, int j, const Eigen::MatrixBase<Derived>& data) {
     BASALT_ASSERT_STREAM(i >= 0, "i " << i);
