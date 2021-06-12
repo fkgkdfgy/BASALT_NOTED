@@ -264,7 +264,8 @@ bool KeypointVioEstimator::measure(
   std::unordered_set<int> unconnected_obs0;
 
   // kv_obs .first  存储 keypoint Id  .second 存储SE2 的数值，也就是存储了uv 和 theta
-  // connected0 用于表示有多少特征点被当前帧的左目观测到了
+  // connected0 用于表示有多少特征点被当前帧的左目观测到了 [host frame ,int ] 代表当前的 optical_flow_result 
+  // 内部观测到的点有多少是之间host frame 生成的点 eg. [1111,6] 有6个点是1111 这个 host frame 生成的
   // unconnected0 用于存储landmark data base 里面没有，但是当前帧的左目观测到(新创建的)的keypoint id
 
   // for 历遍每一个相机 (opt_flow_meas 的observations的数量和相机数量相同)
@@ -427,6 +428,8 @@ bool KeypointVioEstimator::measure(
 
   // 进行优化
   optimize();
+
+  // 进行边缘化的操作
   marginalize(num_points_connected);
 
   if (out_state_queue) {
@@ -469,23 +472,34 @@ void KeypointVioEstimator::checkMargNullspace() const {
   checkNullspace(marg_H, marg_b, marg_order, frame_states, frame_poses);
 }
 
+// 边缘化操作
+// 边缘化的判断
 void KeypointVioEstimator::marginalize(
     const std::map<int64_t, int>& num_points_connected) {
   if (!opt_started) return;
 
+  // ? 所以 frame_poses 是和关键帧有关吗？？
+  // frame_poses 或者 frame_states 大于一定数量 进行边缘化
+  
   if (frame_poses.size() > max_kfs || frame_states.size() >= max_states) {
     // Marginalize
 
+    // 从旧往新数 state_to_remove 代表有多少个老的state 需要被marg 掉
     const int states_to_remove = frame_states.size() - max_states + 1;
 
     auto it = frame_states.cbegin();
     for (int i = 0; i < states_to_remove; i++) it++;
+    
+    // 保存需要marg的state的时间戳
     int64_t last_state_to_marg = it->first;
 
+    // 用于保存frame_poses的矩阵信息
     AbsOrderMap aom;
 
     // remove all frame_poses that are not kfs
     std::set<int64_t> poses_to_marg;
+      // aom 添加index 和 dimension 信息
+
     for (const auto& kv : frame_poses) {
       aom.abs_order_map[kv.first] = std::make_pair(aom.total_size, POSE_SIZE);
 
@@ -499,8 +513,12 @@ void KeypointVioEstimator::marginalize(
       aom.items++;
     }
 
+    // ? state to marg vel_bias ？？？ 所以这frame_poses 是因为frame states marg掉 vel 和bias 的结果？
+    // 
     std::set<int64_t> states_to_marg_vel_bias;
     std::set<int64_t> states_to_marg_all;
+    // marg 的逻辑，如果这一帧是KF 就只是 marg 掉 vel 和bias
+    //             如果不是KF直接全部marg掉
     for (const auto& kv : frame_states) {
       if (kv.first > last_state_to_marg) break;
 
@@ -512,6 +530,7 @@ void KeypointVioEstimator::marginalize(
         }
       }
 
+      // aom 添加index 和 dimension 信息
       aom.abs_order_map[kv.first] =
           std::make_pair(aom.total_size, POSE_VEL_BIAS_SIZE);
 
@@ -526,15 +545,21 @@ void KeypointVioEstimator::marginalize(
 
     auto kf_ids_all = kf_ids;
     std::set<int64_t> kfs_to_marg;
+
+    // 必须满足一下两个条件才进行marg:
+    // 1. 有 states 是kf 需要被marg 掉 vel 和bias
+    // 2. kf_ids 的数量大于max_kfs
     while (kf_ids.size() > max_kfs && !states_to_marg_vel_bias.empty()) {
       int64_t id_to_marg = -1;
 
       {
+        // 存储所有的KF id
         std::vector<int64_t> ids;
         for (int64_t id : kf_ids) {
           ids.push_back(id);
         }
 
+        // 历遍一下如果当前的帧的观测 只占了host frame 创建时，添加landmark数量的0.05 就把这个 这个id 标记为 marg
         for (size_t i = 0; i < ids.size() - 2; i++) {
           if (num_points_connected.count(ids[i]) == 0 ||
               (num_points_connected.at(ids[i]) / num_points_kf.at(ids[i]) <
@@ -555,6 +580,9 @@ void KeypointVioEstimator::marginalize(
         double min_score = std::numeric_limits<double>::max();
         int64_t min_score_id = -1;
 
+        // ? 这个类似于DSO的判断条件有点迷
+        // 第一部分因该是保证前后不会太大
+        // 第二部分应该是保证和最新的state 位移没有太大
         for (size_t i = 0; i < ids.size() - 2; i++) {
           double denom = 0;
           for (size_t j = 0; j < ids.size() - 2; j++) {
@@ -580,6 +608,8 @@ void KeypointVioEstimator::marginalize(
         id_to_marg = min_score_id;
       }
 
+      // 添加需要marg 的id
+      // ? 为什么这里有里那个to_marg
       kfs_to_marg.emplace(id_to_marg);
       poses_to_marg.emplace(id_to_marg);
 
@@ -602,6 +632,9 @@ void KeypointVioEstimator::marginalize(
       std::cout << "kfs_to_marg.size() " << kfs_to_marg.size() << std::endl;
     }
 
+    // 边缘化正式开始
+
+
     size_t asize = aom.total_size;
 
     double marg_prior_error;
@@ -618,6 +651,7 @@ void KeypointVioEstimator::marginalize(
                          TimeCamId, Eigen::aligned_vector<KeypointObservation>>>
           obs_to_lin;
 
+      // 将需要marg 掉的观测放入到 obs_to_line 中
       for (auto it = lmdb.getObservations().cbegin();
            it != lmdb.getObservations().cend();) {
         if (kfs_to_marg.count(it->first.frame_id) > 0) {
@@ -630,6 +664,7 @@ void KeypointVioEstimator::marginalize(
         ++it;
       }
 
+    // Do Schur Complement(视觉、IMU、prior) 这个部分和优化时进行的操作基本一样
       double rld_error;
       Eigen::aligned_vector<RelLinData> rld_vec;
 
@@ -652,6 +687,7 @@ void KeypointVioEstimator::marginalize(
     linearizeMargPrior(marg_order, marg_H, marg_b, aom, accum.getH(),
                        accum.getB(), marg_prior_error);
 
+    // 
     // Save marginalization prior
     if (out_marg_queue && !kfs_to_marg.empty()) {
       // int64_t kf_id = *kfs_to_marg.begin();

@@ -6,6 +6,7 @@
         "unordered_set": "cpp",
         "string_view": "cpp",
         "hash_map": "cpp",
-        "hash_set": "cpp"
+        "hash_set": "cpp",
+        "tensor": "cpp"
     }
 }

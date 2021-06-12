@@ -190,7 +190,7 @@ class KeypointVioEstimator : public VioEstimatorBase,
  private:
   bool take_kf;
   int frames_after_kf;
-  std::set<int64_t> kf_ids;                                                   //存储所有的kf时间戳
+  std::set<int64_t> kf_ids;                                                   //滑窗内的kf_ids
 
   int64_t last_state_t_ns;
   
@@ -202,7 +202,7 @@ class KeypointVioEstimator : public VioEstimatorBase,
 
   Eigen::aligned_map<int64_t, OpticalFlowResult::Ptr> prev_opt_flow_res;      // 保存所有的opt_flow 的结果
 
-  std::map<int64_t, int> num_points_kf;
+  std::map<int64_t, int> num_points_kf;                                       // 保存每一个 KF生成的时候，添加了多少个新的landmark点
 
   // Marginalization
   AbsOrderMap marg_order;
