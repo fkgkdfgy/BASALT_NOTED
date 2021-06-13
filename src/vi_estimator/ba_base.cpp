@@ -308,6 +308,8 @@ void BundleAdjustmentBase::linearizeHelper(
                 rld.d_rel_d_t.emplace_back(d_rel_d_t);
 
                 // ? 这里的线性化是在哪里做的呢？
+                // 答: 因为在实际上进行计算error 的时候不能使用linearized pose 这个是不准确的
+                // 但是 眼尖的小伙伴会发现什么？那就是 d_rel_dh 和 d_rel_dt 是使用 linearized pose 进行求导的
                 if (state_h.isLinearized() || state_t.isLinearized()) {
                   T_t_h_sophus = computeRelPose(
                       state_h.getPose(), calib.T_i_c[tcid_h.cam_id],
@@ -680,6 +682,9 @@ void BundleAdjustmentBase::linearizeMargPrior(const AbsOrderMap& marg_order,
   Eigen::VectorXd delta;
   computeDelta(marg_order, delta);
 
+  // 这里的意思实际上就和(x-x_0-\delta)是一个意思
+  // BASALT的prior 的数值一直在变，也就是说basalt的先验并不恒定 这个地方真的对吗？
+  // 
   abs_b.head(marg_size) += marg_b;
   abs_b.head(marg_size) += marg_H * delta;
 

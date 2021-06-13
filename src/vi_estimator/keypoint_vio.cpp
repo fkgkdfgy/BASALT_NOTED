@@ -653,6 +653,10 @@ void KeypointVioEstimator::marginalize(
           obs_to_lin;
 
       // 将需要marg 掉的观测放入到 obs_to_line 中
+      // 这里应该就是论文里面说汇集马尔可夫摊的地方
+      // 1. 第一个for 查看当前obs 的host frame 是不是应该被marg 掉
+      // 2. 第二个for 查看这个obs 的第二集包含的target frame的时间戳是不是小于  last state to marg
+      //    如果是就marg 掉
       for (auto it = lmdb.getObservations().cbegin();
            it != lmdb.getObservations().cend();) {
         if (kfs_to_marg.count(it->first.frame_id) > 0) {
@@ -797,6 +801,7 @@ void KeypointVioEstimator::marginalize(
     AbsOrderMap marg_order_new;
     
     // 将剩下的frame_poses的 index和 size 统计到 marg_order_new 当中
+    // marg_order_new 保存的是 保留下来的优化变量
     for (const auto& kv : frame_poses) {
       marg_order_new.abs_order_map[kv.first] =
           std::make_pair(marg_order_new.total_size, POSE_SIZE);
