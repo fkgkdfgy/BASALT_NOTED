@@ -569,12 +569,15 @@ void BundleAdjustmentBase::filterOutliers(double outlier_threshold,
   // std::endl;
 }
 
+// BASALT margin
 void BundleAdjustmentBase::marginalizeHelper(Eigen::MatrixXd& abs_H,
                                              Eigen::VectorXd& abs_b,
                                              const std::set<int>& idx_to_keep,
                                              const std::set<int>& idx_to_marg,
                                              Eigen::MatrixXd& marg_H,
                                              Eigen::VectorXd& marg_b) {
+  
+  // 
   int keep_size = idx_to_keep.size();
   int marg_size = idx_to_marg.size();
 
@@ -583,7 +586,7 @@ void BundleAdjustmentBase::marginalizeHelper(Eigen::MatrixXd& abs_H,
   // Fill permutation matrix
   Eigen::Matrix<int, Eigen::Dynamic, 1> indices(idx_to_keep.size() +
                                                 idx_to_marg.size());
-
+  // 进行 indices 填充
   {
     auto it = idx_to_keep.begin();
     for (size_t i = 0; i < idx_to_keep.size(); i++) {
@@ -591,7 +594,7 @@ void BundleAdjustmentBase::marginalizeHelper(Eigen::MatrixXd& abs_H,
       it++;
     }
   }
-
+  // 进行 indices 填充
   {
     auto it = idx_to_marg.begin();
     for (size_t i = 0; i < idx_to_marg.size(); i++) {
@@ -614,6 +617,7 @@ void BundleAdjustmentBase::marginalizeHelper(Eigen::MatrixXd& abs_H,
   //  abs_H.bottomRightCorner(marg_size,
   //  marg_size).ldlt().solveInPlace(H_mm_inv);
 
+  // 这里产生的结果和 37.basalt/code_reading/marginalize.md 结果基本一致
   H_mm_inv = abs_H.bottomRightCorner(marg_size, marg_size)
                  .fullPivLu()
                  .solve(Eigen::MatrixXd::Identity(marg_size, marg_size));

@@ -458,8 +458,9 @@ class BundleAdjustmentBase {
   }
 
   Eigen::aligned_map<int64_t, PoseVelBiasStateWithLin<double>> frame_states; // 存储所有的frame Pose Vel Bias 和State 数据
-  Eigen::aligned_map<int64_t, PoseStateWithLin<double>> frame_poses;         // 存储所有的Pose ?? 存疑，估计是为了方便线性化结果的整合，所以和上面的东西分开放了。
-
+                                                                             // 基本帧
+  Eigen::aligned_map<int64_t, PoseStateWithLin<double>> frame_poses;         // 存储所有滑窗内的 margin prior 的信息 存疑，估计是为了方便线性化结果的整合，所以和上面的东西分开放了。
+                                                                             // 是从KF当中产生的
   // Point management
   LandmarkDatabase lmdb;
 

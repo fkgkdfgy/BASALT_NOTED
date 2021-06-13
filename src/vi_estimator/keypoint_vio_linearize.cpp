@@ -123,32 +123,32 @@ void KeypointVioEstimator::linearizeAbsIMU(
         // difference between biases
         double dt = kv.second.get_dt_ns() * 1e-9;
         {
-        Eigen::Vector3d gyro_bias_weight_dt = gyro_bias_weight / dt;
+            Eigen::Vector3d gyro_bias_weight_dt = gyro_bias_weight / dt;
 
-        //        std::cerr << "gyro_bias_weight_dt " <<
-        //        gyro_bias_weight_dt.transpose()
-        //                  << std::endl;
+            //        std::cerr << "gyro_bias_weight_dt " <<
+            //        gyro_bias_weight_dt.transpose()
+            //                  << std::endl;
 
-        Eigen::Vector3d res_bg =
-            start_state.getState().bias_gyro - end_state.getState().bias_gyro;
+            Eigen::Vector3d res_bg =
+                start_state.getState().bias_gyro - end_state.getState().bias_gyro;
 
-        abs_H.block<3, 3>(start_idx + 9, start_idx + 9) +=
-            gyro_bias_weight_dt.asDiagonal();
-        abs_H.block<3, 3>(end_idx + 9, end_idx + 9) +=
-            gyro_bias_weight_dt.asDiagonal();
+            abs_H.block<3, 3>(start_idx + 9, start_idx + 9) +=
+                gyro_bias_weight_dt.asDiagonal();
+            abs_H.block<3, 3>(end_idx + 9, end_idx + 9) +=
+                gyro_bias_weight_dt.asDiagonal();
 
-        abs_H.block<3, 3>(end_idx + 9, start_idx + 9) -=
-            gyro_bias_weight_dt.asDiagonal();
-        abs_H.block<3, 3>(start_idx + 9, end_idx + 9) -=
-            gyro_bias_weight_dt.asDiagonal();
+            abs_H.block<3, 3>(end_idx + 9, start_idx + 9) -=
+                gyro_bias_weight_dt.asDiagonal();
+            abs_H.block<3, 3>(start_idx + 9, end_idx + 9) -=
+                gyro_bias_weight_dt.asDiagonal();
 
-        abs_b.segment<3>(start_idx + 9) +=
-            gyro_bias_weight_dt.asDiagonal() * res_bg;
-        abs_b.segment<3>(end_idx + 9) -=
-            gyro_bias_weight_dt.asDiagonal() * res_bg;
+            abs_b.segment<3>(start_idx + 9) +=
+                gyro_bias_weight_dt.asDiagonal() * res_bg;
+            abs_b.segment<3>(end_idx + 9) -=
+                gyro_bias_weight_dt.asDiagonal() * res_bg;
 
-        bg_error += 0.5 * res_bg.transpose() *
-                    gyro_bias_weight_dt.asDiagonal() * res_bg;
+            bg_error += 0.5 * res_bg.transpose() *
+                        gyro_bias_weight_dt.asDiagonal() * res_bg;
         }
 
         {

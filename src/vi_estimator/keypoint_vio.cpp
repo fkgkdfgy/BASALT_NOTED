@@ -491,6 +491,7 @@ void KeypointVioEstimator::marginalize(
     for (int i = 0; i < states_to_remove; i++) it++;
     
     // 保存需要marg的state的时间戳
+    // 这个时间戳所代表的frame_states 并不会被marg掉
     int64_t last_state_to_marg = it->first;
 
     // 用于保存frame_poses的矩阵信息
@@ -684,6 +685,8 @@ void KeypointVioEstimator::marginalize(
     linearizeAbsIMU(aom, accum.getH(), accum.getB(), imu_error, bg_error,
                     ba_error, frame_states, imu_meas, gyro_bias_weight,
                     accel_bias_weight, g);
+
+    // marg_prior_error 并没有使用
     linearizeMargPrior(marg_order, marg_H, marg_b, aom, accum.getH(),
                        accum.getB(), marg_prior_error);
 
@@ -711,6 +714,8 @@ void KeypointVioEstimator::marginalize(
       }
     }
 
+    // 填充idx_to_keep idx_to_marg
+    // 内部涉及到哪些 参数被保留 哪些参数被marg
     std::set<int> idx_to_keep, idx_to_marg;
     for (const auto& kv : aom.abs_order_map) {
       if (kv.second.second == POSE_SIZE) {
@@ -722,7 +727,8 @@ void KeypointVioEstimator::marginalize(
           for (size_t i = 0; i < POSE_SIZE; i++)
             idx_to_marg.emplace(start_idx + i);
         }
-      } else {
+      } 
+      else {
         BASALT_ASSERT(kv.second.second == POSE_VEL_BIAS_SIZE);
         // state
         int start_idx = kv.second.first;
@@ -752,6 +758,8 @@ void KeypointVioEstimator::marginalize(
 
     Eigen::MatrixXd marg_H_new;
     Eigen::VectorXd marg_b_new;
+
+    // 这里做的就是通过Schur补来构建prior
     marginalizeHelper(accum.getH(), accum.getB(), idx_to_keep, idx_to_marg,
                       marg_H_new, marg_b_new);
 
@@ -761,12 +769,14 @@ void KeypointVioEstimator::marginalize(
       frame_states.at(last_state_to_marg).setLinTrue();
     }
 
+    // 删除信息存储
     for (const int64_t id : states_to_marg_all) {
       frame_states.erase(id);
       imu_meas.erase(id);
       prev_opt_flow_res.erase(id);
     }
 
+    // 破案了 frame_poses 就是在 marg 之后继续进行生成的
     for (const int64_t id : states_to_marg_vel_bias) {
       const PoseVelBiasStateWithLin<double>& state = frame_states.at(id);
       PoseStateWithLin pose(state);
@@ -776,6 +786,7 @@ void KeypointVioEstimator::marginalize(
       imu_meas.erase(id);
     }
 
+    // 去除掉旧的frame_poses
     for (const int64_t id : poses_to_marg) {
       frame_poses.erase(id);
       prev_opt_flow_res.erase(id);
@@ -784,7 +795,8 @@ void KeypointVioEstimator::marginalize(
     lmdb.removeKeyframes(kfs_to_marg, poses_to_marg, states_to_marg_all);
 
     AbsOrderMap marg_order_new;
-
+    
+    // 将剩下的frame_poses的 index和 size 统计到 marg_order_new 当中
     for (const auto& kv : frame_poses) {
       marg_order_new.abs_order_map[kv.first] =
           std::make_pair(marg_order_new.total_size, POSE_SIZE);
@@ -793,6 +805,7 @@ void KeypointVioEstimator::marginalize(
       marg_order_new.items++;
     }
 
+    // 添加最近marg 的state
     {
       marg_order_new.abs_order_map[last_state_to_marg] =
           std::make_pair(marg_order_new.total_size, POSE_VEL_BIAS_SIZE);
@@ -807,7 +820,11 @@ void KeypointVioEstimator::marginalize(
     BASALT_ASSERT(size_t(marg_H.cols()) == marg_order.total_size);
 
     Eigen::VectorXd delta;
+    // 经过讨论之后，结论就是为了维护FEJ
+    // 再更新，并不是为了维护FEJ只是为了维护住 hessian矩阵，然后可以不用多次线性化，加速计算
+    // 王鹏大佬说的是对的这里的目的是为了 去掉delta 那么问题就变成了为什么不在 添加先验的时候就把他去掉呢？
     computeDelta(marg_order, delta);
+    // 这里实际上是为了linearized 的点
     marg_b -= marg_H * delta;
 
     if (config.vio_debug) {

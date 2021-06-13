@@ -205,7 +205,7 @@ class KeypointVioEstimator : public VioEstimatorBase,
   std::map<int64_t, int> num_points_kf;                                       // 保存每一个 KF生成的时候，添加了多少个新的landmark点
 
   // Marginalization
-  AbsOrderMap marg_order;
+  AbsOrderMap marg_order;                                                     // 保存margin prior 的信息
   Eigen::MatrixXd marg_H;
   Eigen::VectorXd marg_b;
 
