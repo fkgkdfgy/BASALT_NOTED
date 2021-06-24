@@ -109,6 +109,9 @@ class BundleAdjustmentBase {
     void invert_keypoint_hessians() {
       for (auto& kv : Hll) {
         Eigen::Matrix3d Hll_inv;
+        // 这里的操作就是 使用 Hx = I
+        // 然后使用了 solveInPlace 直接保存进了 Hll_inv
+        // x = H^{-1} 
         Hll_inv.setIdentity();
         kv.second.ldlt().solveInPlace(Hll_inv);
         kv.second = Hll_inv;

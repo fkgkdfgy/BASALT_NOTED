@@ -147,6 +147,9 @@ pangolin::OpenGlRenderState camera;
 
 std::string marg_data_path;
 
+
+
+// NFR 算法入口
 int main(int argc, char** argv) {
   bool show_gui = true;
   std::string cam_calib_path;
